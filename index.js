@@ -42,8 +42,8 @@ client.on('messageCreate', async (message) => {
   const chnnl = message.guild.channels.cache.get(message.channelId)    
   const member = message.guild.members.cache.get(message.author.id)
 
-  const hasPioneer = await member["_roles"].findIndex(r => r === process.env.PIONEER_ROLE)
-  if (hasPioneer === -1) return
+  //const hasPioneer = await member["_roles"].findIndex(r => r === process.env.PIONEER_ROLE)
+  //if (hasPioneer === -1) return
 
   const prefix = "+"
   if (!message.content.startsWith(prefix)) return

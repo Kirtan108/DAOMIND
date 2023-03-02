@@ -7,7 +7,7 @@ module.exports = {
       description: "Information",
     },
     run: async (client, message, args) => {
-      await message.delete()
+      //await message.delete()
 
       const embed = new EmbedBuilder()
       .setColor(0x2f3136)
@@ -16,13 +16,9 @@ module.exports = {
       .setDescription(`Push button below`)
       
       const button = new ButtonBuilder()
-	  .setCustomId('getinfo')
-	  .setLabel('Connect')
-	  .setStyle(ButtonStyle.Success)
-      const button3 = new ButtonBuilder()
-	  .setCustomId('cApp')
-	  .setLabel('Connect App')
-	  .setStyle(ButtonStyle.Success)
+	    .setCustomId('getinfo')
+	    .setLabel('Connect')
+	    .setStyle(ButtonStyle.Success)
 
       const button2 = new ButtonBuilder()
       .setURL("https://connect.mindfolk.art/")
@@ -32,6 +28,7 @@ module.exports = {
 
       const row = new ActionRowBuilder().addComponents(button2)
 
-      await message.channel.send({ embeds: [embed], components: [row] })
+      // await message.channel.send({ embeds: [embed], components: [row] })
+      await message.channel.send({ content: "I'm here!" })
     },
   };

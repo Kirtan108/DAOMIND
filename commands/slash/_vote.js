@@ -31,18 +31,29 @@ module.exports = {
         }
         //const wallet = r.user.public_key
         const userWallets = r.user.wallet.map(i => i.public_key)
-
+        
         let count = 0
-        Object.keys(userWallets).forEach(async key => {
-          const wallet = userWallets[key]
-          const collectionNFT = await getNFTWallet(wallet)
-          await collectionNFT.forEach(function (x) {
-            const collection = x.collectionName
-            if (collection !== 'mindfolk') return
-            count++
-          })
-        })
-        return
+        async function awaitTasks(object) {
+          const promises = [];
+          Object.keys(object).forEach(async key => {
+            const promise = new Promise(async resolve => {
+              const wallet = userWallets[key]
+              const collectionNFT = await getNFTWallet(wallet)
+              await collectionNFT.forEach(function (x) {
+                const collection = x.collectionName
+                if (collection !== 'mindfolk') return
+                count++
+              resolve();
+              })
+            });
+            promises.push(promise);
+          });
+          await Promise.all(promises)
+        }
+
+        await awaitTasks(userWallets)
+        console.log(count)
+        return interaction.followUp({ content: `${count}` })
       })
     },
 };
