@@ -1,4 +1,4 @@
-const { Client, Events, EmbedBuilder, ChannelType, ThreadAutoArchiveDuration, GatewayIntentBits, Partials, WebhookClient, ActivityType } = require("discord.js")
+const { Client, Events, EmbedBuilder, ChannelType, ThreadAutoArchiveDuration, GatewayIntentBits, Partials, WebhookClient, ActivityType, GuildForumThreadManager, ForumChannel, GuildChannel } = require("discord.js")
 const dotenv = require("dotenv")
 
 const commandLoader = require('./commandLoader')
@@ -29,7 +29,7 @@ commandLoader.start(client)
 
 client.on("ready", async () => {
   client.user.setPresence({
-    activities: [{ name: `DAO`, type: ActivityType.Playing }],
+    activities: [{ name: `the DAO`, type: ActivityType.Watching }],
     status: 'online', 
   });
 
@@ -88,7 +88,7 @@ client.on("interactionCreate", async (interaction) => {
   async function handleCommand3() {
     try {
       if (interaction.isChatInputCommand() || interaction.isUserContextMenuCommand()) return
-      await eventHandler(interaction, Messages)
+      await eventHandler(interaction)
     } catch (error) {
       return console.log(error)
     }
@@ -99,7 +99,26 @@ client.on("interactionCreate", async (interaction) => {
   handleCommand3()
 })
 
-// mongoose.connect(process.env.MONGODB).then(() => console.log('Connected to the database!')).catch((err) => console.log(err))
+// client.on('threadCreate', async (thread) => {
+//   //const forumTag = client.guilds.cache.get(`${process.env.GUILD_ID}`).channels.cache.get('1080930588892078163')//.availableTags
+//     if (thread.parentId === '1080930588892078163') await thread.send(`Hello there boss!`)
+//     // if (thread.type == ChannelType.PublicThread) {
+//     //    //await thread.send(`<@&1038779597686309034>`)    
+//     //     // When a new forum post is created
+//     //     console.log(thread)
+//     //     console.log(thread.appliedTags)
+//     //     console.log(thread.parentId) // The forum channel ID
+//     //     console.log(thread.id) // The forum post ID
+//     //     console.log(thread.name) // The name of the forum post
+//     // }
+//     // const tagName = forumTag.map(t => t.id)
+//     // console.log(forumTag.availableTags)
+//     // if(tagName == 'Solidity') console.log(tagName)
+//     // if(tagName == 'Hyperledger Fabric') console.log(tagName)
+//     // if(tagName == 'Typescript') console.log(tagName)
+// })
+
+mongoose.connect(process.env.MONGODB).then(() => console.log('Connected to the database!')).catch((err) => console.log(err))
 
 keepAlive();
 client.login(process.env.TOKEN)

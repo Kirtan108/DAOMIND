@@ -16,7 +16,7 @@ module.exports = {
       .setDescription(`Push button below`)
       
       const button = new ButtonBuilder()
-	    .setCustomId('getinfo')
+	    .setCustomId('abc')
 	    .setLabel('Connect')
 	    .setStyle(ButtonStyle.Success)
 
@@ -26,9 +26,9 @@ module.exports = {
       .setStyle('Link')
       .setEmoji(':logoapp:1065033438069002241')
 
-      const row = new ActionRowBuilder().addComponents(button2)
-
+      const row = new ActionRowBuilder().addComponents(button)
+      
       // await message.channel.send({ embeds: [embed], components: [row] })
-      await message.channel.send({ content: "I'm here!" })
+      await message.channel.send({ content: "I'm here!", components: [row] })
     },
   };

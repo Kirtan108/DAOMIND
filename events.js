@@ -1,7 +1,7 @@
 const { Collection, EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, ButtonStyle, ButtonBuilder, Events, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 const { userInfo } = require("./utils/connect")
-const { format, getMagicEdenWatchList, deletePath } = require("./utils/functions")
+const { format, getNFTWallet } = require("./utils/functions")
 
 const profileModel = require("./models.js")
 
@@ -17,13 +17,10 @@ setInterval(() => {
 
 // EVENT HANDLER BELOW ///
 const eventHandler = async (interaction) => {
-  // FILTER HIDDEN SINCE IT'S IN INDEX
-  // if (interaction.isChatInputCommand() || interaction.isUserContextMenuCommand()) return
+  // await interaction.deferReply({ ephemeral: true })
   // await interaction.deferUpdate({ ephemeral: true })
-  await interaction.deferReply({ ephemeral: true })
 
   const member = interaction.guild.members.cache.get(interaction.user.id)
-  const time = 1000 * 60
 
   const embedLog = new EmbedBuilder().setImage(`${downpage}`).setThumbnail(`${member.displayAvatarURL()}`).setDescription(`• ${member}`).setFooter({ text: `ID: ${member.id}` }).setTimestamp()
 
@@ -34,33 +31,129 @@ const eventHandler = async (interaction) => {
   if (count === 25) return console.log("WARNING Discord API LIMIT PEAK")
 
   // MONGO PROFILE
-  // let profile
-  // try {
-  //   profile = await profileModel.findOne({ userID: interaction.user.id })
-  //   if (!profile) {
-  //     let profile = await profileModel.create({
-  //       userID: interaction.user.id,
-  //       serverID: interaction.guildId,
-  //       discordAvatar: `https://cdn.discordapp.com/guilds/${interaction.guildId}/users/${interaction.user.id}/avatars/${member.avatar}.png?size=4096`,
-  //     })
-  //     profile.save()
-  //   }
-  // } catch (error) {
-  //   console.log(error)
-  // }
+  let profile
+  try {
+    profile = await profileModel.findOne({ userID: interaction.user.id })
+    if (!profile) {
+      let profile = await profileModel.create({
+        userID: interaction.user.id,
+        serverID: interaction.guildId,
+      })
+      profile.save()
+    }
+  } catch (error) {
+    console.log(error)
+  }
 
-  // const updateProfile = async (action) => {
-  //   const update = await profileModel.findOneAndUpdate(
-  //     {
-  //       userID: interaction.user.id
-  //     },
-  //     {
-  //       $push: action
-  //     }
-  //   )
-  // }
+  const updateProfilePush = async (action) => {
+    const update = await profileModel.findOneAndUpdate(
+      {
+        userID: interaction.user.id
+      },
+      {
+        $push: action
+      }
+    )
+  }
+  const updateProfileSet = async (action) => {
+    const update = await profileModel.findOneAndUpdate(
+      {
+        userID: interaction.user.id
+      },
+      {
+        $set: action
+      }
+    )
+  }
+
+  const voteLimit = profile.voteLimit
+  const votePower = profile.votePower
+
+  if (interaction.customId === 'council_election'){
+    await interaction.deferReply({ ephemeral: true })
+    if(voteLimit === 2) return interaction.followUp({ content: "Already reached limit in votes!", ephemeral: true })
+    const candidate = interaction.message.embeds[0].data.fields[0].value
+
+    await userInfo(interaction.user.id).then(async r => {
+      if (r === undefined || r.error !== null) {
+        const appEmbed = new EmbedBuilder()
+          .setColor(0x2f3136)
+          .setTitle("You need to connect to the App")
+          .setFooter({ text: "ConnectApp - Powered by Mindfolk", iconURL: "https://media.discordapp.net/attachments/1048740961561366589/1055593587741564988/logoapp.png" })
+        const button = new ButtonBuilder()
+          .setURL("https://connect.mindfolk.art/")
+          .setLabel('Connect App')
+          .setStyle('Link')
+        const row = new ActionRowBuilder().addComponents(button)
+        return interaction.followUp({ embeds: [appEmbed], components: [row], ephemeral: true })
+      }
+      const userWallets = r.user.wallet.map(i => i.public_key)
+      let count = 0
+      async function awaitTasks(object) {
+        const promises = [];
+        Object.keys(object).forEach(async key => {
+          const promise = new Promise(async (resolve, reject) => {
+            const wallet = object[key]
+            const collectionNFT = await getNFTWallet(wallet)
+            if (collectionNFT.length === 0) return resolve()
+            await collectionNFT.forEach(function (x) {
+              const collection = x.collectionName
+              if (collection === undefined || collection !== 'mindfolk') return
+              count++
+            })
+            resolve(count)
+          });
+          promises.push(promise)
+        });
+        await Promise.all(promises).catch(error => console.error(error))
+      }
+      await awaitTasks(userWallets)
+      console.log(count)
+
+      const button = new ButtonBuilder()
+        .setCustomId(`candidate_${candidate}`)
+        .setLabel('Vote')
+        .setStyle(ButtonStyle.Success)
+
+      const verifyPanel = new EmbedBuilder()
+        .setColor(0x0a0a0a)
+        .setTitle(`⸺ Verification`)
+        .setDescription(`Do you want to vote for this candidate?\n**Accepting this message will confirm the action.**\n\n**• Candidate:** ${candidate}`)
+        //.setThumbnail(`${mention.displayAvatarURL()}`)
+        .addFields({ name: '• Vote Power', value: `> **${count}**`, inline: true })
+
+      const verifyRow = new ActionRowBuilder().addComponents(button)
+      await updateProfileSet({ votePower: count })
+      return interaction.followUp({ embeds: [verifyPanel], components: [verifyRow], ephemeral: true })
+    })
+  }
+
+  if (interaction.customId.startsWith('candidate')){
+    await interaction.deferUpdate({ ephemeral: true })
+    const candidate = await interaction.customId.split('_')[1]
+    const messages = await interaction.guild.channels.cache.get(interaction.channelId).messages.fetch()
+    const voteEmbed = messages.filter(m => m.author.id === process.env.CLIENT_ID).values().next()
+
+    const message = await interaction.guild.channels.cache.get(interaction.channelId).messages.fetch(voteEmbed.value.id);
+
+    const receivedEmbed = message.embeds[0];
+    const newEmbed = EmbedBuilder.from(receivedEmbed)
+    const newVotes = Number(newEmbed.data.fields[1].value) + votePower
+    newEmbed.data.fields[1] = { name: '• Votes', value: `${newVotes}`, inline: true }
+    message.edit({ embeds: [newEmbed] })
+    return interaction.editReply({ content: "Voting sucessful!", embeds: [], components: [], ephemeral: true })
+    profileModel.find({}, (err, data) => {
+      if (err) console.error(err)
+      const user = data.find(i => i.userID === interaction.user.id)
+      console.log(user.voteLimit)
+    });
+    if(voteLimit === 3) return interaction.followUp({ content: "Already reached limit in votes!", ephemeral: true })
+    const newCount = voteLimit + 1
+    await updateProfileSet({ voteLimit: newCount })
+    return interaction.followUp({ content: "Test", ephemeral: true })
+  }
   
-  // let searchComment = !profile ? -1 : profile.tweetComments.findIndex(r => r === interaction.message.id)
+  // 
   // let searchQuest = !profile || interaction.values === undefined ? -1 : profile.quests.findIndex(r => r === interaction.values[0])
 
   // STORE

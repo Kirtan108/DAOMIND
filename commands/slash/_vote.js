@@ -29,26 +29,26 @@ module.exports = {
         if(r.error !== null){
          return interaction.editReply({ embeds:[errorEmbed], ephemeral: false })
         }
-        //const wallet = r.user.public_key
         const userWallets = r.user.wallet.map(i => i.public_key)
         
         let count = 0
         async function awaitTasks(object) {
           const promises = [];
           Object.keys(object).forEach(async key => {
-            const promise = new Promise(async resolve => {
-              const wallet = userWallets[key]
+            const promise = new Promise(async (resolve, reject) => {
+              const wallet = object[key]
               const collectionNFT = await getNFTWallet(wallet)
+              if(collectionNFT.length === 0) return resolve()
               await collectionNFT.forEach(function (x) {
                 const collection = x.collectionName
-                if (collection !== 'mindfolk') return
+                if (collection === undefined || collection !== 'mindfolk') return
                 count++
-              resolve();
               })
+              resolve(count)
             });
-            promises.push(promise);
+            promises.push(promise)
           });
-          await Promise.all(promises)
+          await Promise.all(promises).catch(error => console.error(error))
         }
 
         await awaitTasks(userWallets)

@@ -1,28 +1,13 @@
 const mongoose = require('mongoose')
 
-const profileSchema = new mongoose.Schema({
+const daoSchema = new mongoose.Schema({
     userID: { type: String, require: true, unique: true},
     serverID: { type: String, require: true},
-    discordAvatar: { type: String },
-    tweetLikes: [ String ],
-    tweetRetweets: [ String ],
-    tweetComments: [ String ],
-    quests: [ String ],
-    userFollowed: [ String ],
-    userLikes: [ String ],
-    userRetweets: [ String ],
-    counter: { type: Number, default: 0 }
+    councilVotes: [ String ],
+    voteLimit: { type: Number, default: 0 },
+    votePower: { type: Number, default: 0 },
+    //receivedVotes: [ String ],
 })
 
-// const twitterSchema = new mongoose.Schema({
-//     userID: { type: String, require: true, unique: true},
-//     serverID: { type: String, require: true},
-//     discordAvatar: { type: String },
-//     twitterAvatar: { type: String },
-//     userFollowed: [ String ],
-//     following: { type: Number, default: 0 }
-// })
-
-const model = mongoose.model('ProfileModels', profileSchema)
-//const modelTwitter = mongoose.model('TwitterModels', twitterSchema)
+const model = mongoose.model('daos', daoSchema)
 module.exports = model
