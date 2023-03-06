@@ -25,7 +25,7 @@ async function getNFTWallet(publicKey){
   );
   try {
     await page.goto(`https://api-mainnet.magiceden.io/rpc/getNFTsByOwner/${publicKey}`, {
-      timeout: 1000 * 30,
+      timeout: 1000 * 60,
     });
     await page.content();
 
