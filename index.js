@@ -58,14 +58,14 @@ client.on('messageCreate', async (message) => {
 })
 
 //catches slash commands
-client.on("interactionCreate", async (interaction) => {
+client.on("interactionCreate", async (interaction) => { 
   async function handleCommand() {
     try {
       if (!interaction.isChatInputCommand()) return
       await interaction.deferReply({ ephemeral: true })
 
       const slashcmd = client.slashcommands.get(interaction.commandName)
-      if (!slashcmd) interaction.editReply({ content: "Not a valid command", ephemeral: true })
+      if (!slashcmd) return interaction.editReply({ content: "Not a valid command", ephemeral: true })
 
       //await interaction.deferReply()
       if (slashcmd) await slashcmd.run({ client, interaction })
@@ -79,7 +79,7 @@ client.on("interactionCreate", async (interaction) => {
       await interaction.deferReply({ ephemeral: true })
 
       const slashcmd = client.slashcommands.get(interaction.commandName)
-      if (!slashcmd) interaction.editReply({ content: "Not a valid command", ephemeral: true })
+      if (!slashcmd) return interaction.editReply({ content: "Not a valid command", ephemeral: true })
       if (slashcmd) await slashcmd.run({ client, interaction })
     } catch (error) {
       return console.log(error)
