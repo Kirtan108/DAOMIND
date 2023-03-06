@@ -9,11 +9,5 @@ const appEmbed = new EmbedBuilder()
 const votedCandidate = new EmbedBuilder()
 .setImage(`${downpage}`)
 .setColor(0xFFE586)
-.setTitle(`You have already voted this candidate!`)
 
-const voteLimit = new EmbedBuilder()
-.setImage(`${downpage}`)
-.setColor(0xFFE586)
-.setTitle(`You have already voted this candidate!`)
-
-module.exports = { appEmbed, votedCandidate, voteLimit }
+module.exports = { appEmbed, votedCandidate }

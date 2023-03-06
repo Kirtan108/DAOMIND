@@ -25,7 +25,7 @@ const { Collection, EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, But
 //   return interaction.editReply({ content: "The Sol has been sent to your wallet."})
 // }
 
-const VOTE_LIMIT = 2
+const VOTE_LIMIT = 3
 
 const { userInfo } = require("./utils/connect")
 const { format, getNFTWallet } = require("./utils/functions")
@@ -131,10 +131,16 @@ const eventHandler = async (interaction) => {
 
   if (interaction.customId === 'council_election'){
     await interaction.deferReply({ ephemeral: true })
-    if (voteLimit === VOTE_LIMIT) return interaction.followUp({ embeds: [voteLimit], ephemeral: true })
+    if (voteLimit === VOTE_LIMIT){
+      votedCandidate.setTitle(`You have reached the limit of votes for this election!`)
+      return interaction.followUp({ content: "HEY!", embeds: [votedCandidate], ephemeral: true })
+    }
     const candidate = interaction.message.embeds[0].data.fields[0].value
     const searchVote = !profile ? -1 : profile.councilVotes.findIndex(r => r === candidate)
-    if (searchVote !== -1) return interaction.followUp({ embeds: [votedCandidate], ephemeral: true })
+    if (searchVote !== -1){
+      votedCandidate.setTitle(`You have already voted this candidate!`)
+      return interaction.followUp({ embeds: [votedCandidate], ephemeral: true })
+    }
 
     await userInfo(interaction.user.id).then(async r => {
       if (r === undefined || r.error !== null) return interaction.followUp({ embeds: [appEmbed], components: [appLink], ephemeral: true })
