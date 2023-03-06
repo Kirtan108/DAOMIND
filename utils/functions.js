@@ -18,7 +18,7 @@ function format(number){
 }
 
 async function getNFTWallet(publicKey){
-  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+  const browser = await puppeteer.launch({ args: ['--no-sandbox'], headless: true });
   const page = await browser.newPage();
   await page.setUserAgent(
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.04103.116 Safari/537.36'
@@ -42,4 +42,34 @@ async function getNFTWallet(publicKey){
   }
 }
 
-module.exports = { format, getNFTWallet }
+async function getNFTS(Wallet){
+  const data = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "qn_fetchNFTs",
+    params: {
+      wallet: Wallet,
+      omitFields: ["provenance", "traits"],
+      page: 1,
+      perPage: 40,
+    },
+  }
+  const config = {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+  try {
+  const response = await fetch("https://spring-sleek-shard.solana-mainnet.discover.quiknode.pro/86050a4119dd4d9f6d5279cfd00316fee4d4a3cb", config)
+  const collection = await response.json()
+  const NFTS = collection.result.assets
+  return NFTS
+  } catch(err){
+      // handle error
+      console.log(err);
+  }
+}
+
+module.exports = { format, getNFTWallet, getNFTS }
