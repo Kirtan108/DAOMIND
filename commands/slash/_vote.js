@@ -52,8 +52,14 @@ module.exports = {
         }
 
         await awaitTasks(userWallets)
-        console.log(count)
-        return interaction.followUp({ content: `${count}` })
+        const votePowerEmbed = new EmbedBuilder()
+        .setColor(0x0a0a0a)
+        .setAuthor({ name: mention.username })
+        .setTitle(`⸺ VOTE POWER`)
+        .setDescription(`> **${count}**`)
+        .setThumbnail(`${mention.displayAvatarURL()}`)
+
+        return interaction.followUp({ embeds: [votePowerEmbed] })
       })
     },
 };

@@ -1,9 +1,40 @@
 const { Collection, EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, ButtonStyle, ButtonBuilder, Events, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
+// const web3 = require("@solana/web3.js")
+// const bs58 = require("bs58")
+// async function Transaction (){
+//   await interaction.deferReply({ ephemeral: true })
+//   const fromWallet = web3.Keypair.fromSecretKey(
+//     bs58.decode(
+//       process.env.P_KEY
+//     )
+//   );
+//   console.log (fromWallet.publicKey.toString());
+//   const solana = new web3.Connection("https://spring-sleek-shard.solana-mainnet.discover.quiknode.pro/86050a4119dd4d9f6d5279cfd00316fee4d4a3cb/");
+//   // Replace fromWallet with your public/secret keypair, wallet must have funds to pay transaction fees.
+//   const toWallet = web3.Keypair.generate();
+//   const transaction = new web3.Transaction().add(
+//     web3.SystemProgram.transfer({
+//       fromPubkey: fromWallet.publicKey,
+//       toPubkey: "CGDqzxvAs72vMxsw9tXjdTxzRwp43oaEszhUNgPzrbiz",
+//       lamports: 1230000,
+//     })
+//   );
+//   const TX = await web3.sendAndConfirmTransaction(solana, transaction, [fromWallet])
+//   console.log(TX);
+//   return interaction.editReply({ content: "The Sol has been sent to your wallet."})
+// }
+
+const ELECTION_NUMBER = "numberOne"
+const VOTE_LIMIT = 2
+
 const { userInfo } = require("./utils/connect")
 const { format, getNFTWallet } = require("./utils/functions")
+const { appEmbed, votedCandidate, voteLimit } = require("./utils/embeds")
+const { appLink } = require("./utils/buttons")
 
-const profileModel = require("./models.js")
+const { daoModel, electionModel } = require("./models.js")
+
 
 const dotenv = require('dotenv')
 dotenv.config()
@@ -33,9 +64,9 @@ const eventHandler = async (interaction) => {
   // MONGO PROFILE
   let profile
   try {
-    profile = await profileModel.findOne({ userID: interaction.user.id })
+    profile = await daoModel.findOne({ userID: interaction.user.id })
     if (!profile) {
-      let profile = await profileModel.create({
+      let profile = await daoModel.create({
         userID: interaction.user.id,
         serverID: interaction.guildId,
       })
@@ -44,9 +75,25 @@ const eventHandler = async (interaction) => {
   } catch (error) {
     console.log(error)
   }
+  const profileCandidate = async (person) => {
+    let profileElection
+    try {
+      profileElection = await electionModel.findOne({ name: person })
+      if (!profileElection) {
+        let profileElection = await electionModel.create({
+          name: person,
+          election: ELECTION_NUMBER,
+        })
+        profileElection.save()
+      }
+      return profileElection
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
   const updateProfilePush = async (action) => {
-    const update = await profileModel.findOneAndUpdate(
+    const update = await daoModel.findOneAndUpdate(
       {
         userID: interaction.user.id
       },
@@ -56,7 +103,7 @@ const eventHandler = async (interaction) => {
     )
   }
   const updateProfileSet = async (action) => {
-    const update = await profileModel.findOneAndUpdate(
+    const update = await daoModel.findOneAndUpdate(
       {
         userID: interaction.user.id
       },
@@ -65,30 +112,40 @@ const eventHandler = async (interaction) => {
       }
     )
   }
+  const updateElection = async (person, action) => {
+    await profileCandidate(person)
+    const update = await electionModel.findOneAndUpdate(
+      {
+        name: person
+      },
+      {
+        $push: action
+      }
+    )
+  }
 
-  const voteLimit = profile.voteLimit
-  const votePower = profile.votePower
+  //let searchLike = !profile ? -1 : profile.tweetLikes.findIndex(r => r === interaction.message.id)
+
+  const voteLimit = !profile ? null : profile.voteLimit
+  const votePower = !profile ? null : profile.votePower
+  const voteKeys = !profile ? null : profile.NFTKeys
+  const votePublicKey = !profile ? null : profile.publicKey  
 
   if (interaction.customId === 'council_election'){
     await interaction.deferReply({ ephemeral: true })
-    if(voteLimit === 2) return interaction.followUp({ content: "Already reached limit in votes!", ephemeral: true })
+    if (voteLimit === VOTE_LIMIT) return interaction.followUp({ embeds: [voteLimit], ephemeral: true })
     const candidate = interaction.message.embeds[0].data.fields[0].value
+    const searchVote = !profile ? -1 : profile.councilVotes.findIndex(r => r === candidate)
+    if (searchVote !== -1) return interaction.followUp({ embeds: [votedCandidate], ephemeral: true })
 
     await userInfo(interaction.user.id).then(async r => {
-      if (r === undefined || r.error !== null) {
-        const appEmbed = new EmbedBuilder()
-          .setColor(0x2f3136)
-          .setTitle("You need to connect to the App")
-          .setFooter({ text: "ConnectApp - Powered by Mindfolk", iconURL: "https://media.discordapp.net/attachments/1048740961561366589/1055593587741564988/logoapp.png" })
-        const button = new ButtonBuilder()
-          .setURL("https://connect.mindfolk.art/")
-          .setLabel('Connect App')
-          .setStyle('Link')
-        const row = new ActionRowBuilder().addComponents(button)
-        return interaction.followUp({ embeds: [appEmbed], components: [row], ephemeral: true })
-      }
+      if (r === undefined || r.error !== null) return interaction.followUp({ embeds: [appEmbed], components: [appLink], ephemeral: true })
+      
       const userWallets = r.user.wallet.map(i => i.public_key)
+      const mainWallet = r.user.public_key
+      await updateProfileSet({ publicKey: mainWallet })
       let count = 0
+      let tokenKeys = []
       async function awaitTasks(object) {
         const promises = [];
         Object.keys(object).forEach(async key => {
@@ -99,6 +156,8 @@ const eventHandler = async (interaction) => {
             await collectionNFT.forEach(function (x) {
               const collection = x.collectionName
               if (collection === undefined || collection !== 'mindfolk') return
+              const tokenID = x.mintAddress
+              tokenKeys.push(tokenID)
               count++
             })
             resolve(count)
@@ -108,21 +167,21 @@ const eventHandler = async (interaction) => {
         await Promise.all(promises).catch(error => console.error(error))
       }
       await awaitTasks(userWallets)
-      console.log(count)
 
       const button = new ButtonBuilder()
-        .setCustomId(`candidate_${candidate}`)
-        .setLabel('Vote')
-        .setStyle(ButtonStyle.Success)
+      .setCustomId(`candidate_${candidate}`)
+      .setLabel('Vote')
+      .setStyle(ButtonStyle.Success)
 
       const verifyPanel = new EmbedBuilder()
-        .setColor(0x0a0a0a)
-        .setTitle(`⸺ Verification`)
-        .setDescription(`Do you want to vote for this candidate?\n**Accepting this message will confirm the action.**\n\n**• Candidate:** ${candidate}`)
+      .setColor(0x0a0a0a)
+      .setTitle(`⸺ Verification`)
+      .setDescription(`Do you want to vote for this candidate?\n**Accepting this message will confirm the action.**\n\n**• Candidate:** ${candidate}`)
         //.setThumbnail(`${mention.displayAvatarURL()}`)
-        .addFields({ name: '• Vote Power', value: `> **${count}**`, inline: true })
+      .addFields({ name: '• Vote Power', value: `> **${count}**`, inline: true })
 
       const verifyRow = new ActionRowBuilder().addComponents(button)
+      await updateProfileSet({ NFTKeys: tokenKeys })
       await updateProfileSet({ votePower: count })
       return interaction.followUp({ embeds: [verifyPanel], components: [verifyRow], ephemeral: true })
     })
@@ -131,6 +190,7 @@ const eventHandler = async (interaction) => {
   if (interaction.customId.startsWith('candidate')){
     await interaction.deferUpdate({ ephemeral: true })
     const candidate = await interaction.customId.split('_')[1]
+
     const messages = await interaction.guild.channels.cache.get(interaction.channelId).messages.fetch()
     const voteEmbed = messages.filter(m => m.author.id === process.env.CLIENT_ID).values().next()
 
@@ -141,136 +201,28 @@ const eventHandler = async (interaction) => {
     const newVotes = Number(newEmbed.data.fields[1].value) + votePower
     newEmbed.data.fields[1] = { name: '• Votes', value: `${newVotes}`, inline: true }
     message.edit({ embeds: [newEmbed] })
-    return interaction.editReply({ content: "Voting sucessful!", embeds: [], components: [], ephemeral: true })
-    profileModel.find({}, (err, data) => {
-      if (err) console.error(err)
-      const user = data.find(i => i.userID === interaction.user.id)
-      console.log(user.voteLimit)
-    });
-    if(voteLimit === 3) return interaction.followUp({ content: "Already reached limit in votes!", ephemeral: true })
-    const newCount = voteLimit + 1
-    await updateProfileSet({ voteLimit: newCount })
-    return interaction.followUp({ content: "Test", ephemeral: true })
-  }
-  
-  // 
-  // let searchQuest = !profile || interaction.values === undefined ? -1 : profile.quests.findIndex(r => r === interaction.values[0])
+    
+    async function voteSteps() {
+      return new Promise(async (resolve, reject) => {
+        try{
+        await updateElection(candidate, { voteKeys: voteKeys })
+        await updateElection(candidate, { voteIds: interaction.user.id })
+        await updateElection(candidate, { voteWallets: votePublicKey })
+        await electionModel.findOneAndUpdate({ name: candidate }, { $set: { votes: newVotes } })
 
-  // STORE
-  if (interaction.customId === 'store') {
-
-    const items = new StringSelectMenuBuilder()
-      .setCustomId('items')
-      .setPlaceholder('Select an item...')
-      .addOptions(
-        // {
-        //   label: '🎟️ Ticket to enter Raffles',
-        //   description: 'Price: 3,000$',
-        //   value: 'raffle_ticket',
-        // },
-        {
-          label: '🪵 15K $WOOD Drop',
-          description: 'Price: 15,000$',
-          value: 'wood_drop',
-        },
-        {
-          label: '📤 Withdraw to the Bank',
-          description: 'Only if you have the $15K WOOD Drop',
-          value: 'withdraw',
-        },
-      )
-    const shop = new ActionRowBuilder().addComponents(items)
-    await interaction.followUp({ embeds: [connectStore1, connectStore2], components: [shop], ephemeral: true })
-  } // STORE ITEMS BELOW
-  if (interaction.customId === 'items') {
-    const selected = await interaction.values[0]
-
-    await userInfo(interaction.user.id).then(async r => {
-      if (r === undefined) return interaction.followUp({ content: "To many ongoing requests, please wait 5s and try again!", ephemeral: true })
-      const wallet = await r.user.public_key
-      const balance =  !r.user.reward ? 0 : r.user.reward.balance
-      const total = !r.user.reward ? 0 : r.user.reward.total
-
-      // TICKET ROLE
-      // if (selected === 'raffle_ticket') {
-      //   const hasRole = await member["_roles"].findIndex(r => r === process.env.TICKET_ROLE)
-      //   const reason = 'storeItem: raffle ticket'
-      //   if (hasRole !== -1) return interaction.followUp({ content: "You already have a ticket!", ephemeral: true })
-
-      //   await claimToken(wallet, 3000, reason).then(async r => {
-      //     if (r === undefined) return interaction.editReply({ content: "To many ongoing requests, please wait 5s and try again!", ephemeral: true })
-      //     // If user has balance vs if user doesn't have balance
-      //     if (r.error === null) {
-      //       member.roles.add(ticketRole).catch(err => console.log(err))
-      //       return interaction.followUp({ content: "Congratulations, item purchased! You are now able to enter the raffles.", components: [], ephemeral: true })
-      //     } else {
-      //       return interaction.followUp({ content: "Not enought funds!", components: [], ephemeral: true })
-      //     }
-      //   })
-      // }
-      // WOOD DROP ROLE
-      if (selected === 'wood_drop') {
-        const amount = 15000
-        //return interaction.followUp({ content: "All transactions are being reviewed for legitimacy so this service is currently unavailable, please await until further notification. It will be available again soon! - *Estimated time: 12-24h*", ephemeral: true })
-        const hasRole = await member["_roles"].findIndex(r => r === process.env.CLAIM_ROLE)
-        const hasRole2 = await member["_roles"].findIndex(r => r === process.env.WEEKLY_ROLE)
-        const reason = 'storeItem: 15k wood drop'
-        if (hasRole !== -1) return interaction.followUp({ content: "You already have the item!", ephemeral: true })
-        if (hasRole2 !== -1) return interaction.followUp({ content: "You need to wait until next week to request more $WOOD.", ephemeral: true })
-        if (balance < amount) return interaction.followUp({ content: "Not enought funds!", ephemeral: true })
-
-        await claimToken(wallet, amount, reason).then(async r => {
-          //if (r === undefined) return interaction.followUp({ content: "To many ongoing requests, please wait 5s and try again!", ephemeral: true })
-          // If user has balance vs if user doesn't have balance
-          if (r.error === null) {
-            //bankDrop(wallet)
-            member.roles.add(claimRole).catch(err => console.log(err))
-            return interaction.followUp({ content: "Item purchased! To withdraw choose the option **Withdraw to the Bank** in the Store.", components: [], ephemeral: true })
-          } else {
-            return interaction.followUp({ content: "Not enought funds!", components: [], ephemeral: true })
-          }
-        })
-      }
-      // WITHDRAWAL
-      if (selected === 'withdraw') {
-        //return interaction.followUp({ content: "All transactions are being reviewed for legitimacy so this service is currently unavailable, please await until further notification. It will be available again soon! - *Estimated time: 12-24h*", ephemeral: true })
-        const hasRole = await member["_roles"].findIndex(r => r === process.env.CLAIM_ROLE)
-        const hasRole2 = await member["_roles"].findIndex(r => r === process.env.TWOCLAIM_ROLE)
-        if (hasRole2 !== -1) {
-          await member.roles.add(weeklyRole).then(async () => {
-            const embedLog = new EmbedBuilder()
-              .setTitle(`KINGDOM 2K BANK WITHDRAWAL`)
-              .setThumbnail(`${member.displayAvatarURL()}`)
-              .setDescription(`• ${member} has withdraw the $WOOD to the Kingdom Bank\n> Balance: **${format(balance)}** ${token}\n> Total: **${format(total)}** ${token}`)
-              .setColor(0xFFDE59).setFooter({ text: `ID: ${member.id}` })
-              .setTimestamp()
-            await bankDrop(wallet, 2000)
-            await member.roles.remove(claimRole2K)
-            await interaction.editReply({ content: "Congratulations $Wood has been dropped!\nIt's now available in the [Wood Bank](https://quest.mindfolk.art/bank)\n\n**BE AWARE:** Only Phantom or Solflare Wallets are supported", components: [], ephemeral: true })
-            return interaction.guild.channels.cache.get(process.env.DROPLOG_CH).send({ embeds: [embedLog] })
-          })
+        const newCount = voteLimit + 1
+        await updateProfileSet({ voteLimit: newCount })
+        await updateProfilePush({ councilVotes: candidate })
+        return interaction.editReply({ content: "Voting sucessful!", embeds: [], components: [], ephemeral: true })
+        } catch (err){
+          console.log("ERROR VOTE STEPS FUNCTION")
+          reject(error);
         }
-        if (hasRole === -1) {
-          return interaction.followUp({ content: "You need to buy first the $15K WOOD Drop", ephemeral: true })
-        } else {
-          if (hasRole !== -1) {
-            await member.roles.add(weeklyRole).then(async () => {
-              const embedLog = new EmbedBuilder()
-                .setTitle(`KINGDOM 15K BANK WITHDRAWAL`)
-                .setThumbnail(`${member.displayAvatarURL()}`)
-                .setDescription(`• ${member} has withdraw the $WOOD to the Kingdom Bank\n> Balance: **${format(balance)}** ${token}\n> Total: **${format(total)}** ${token}`)
-                .setColor(0xFF4CBA).setFooter({ text: `ID: ${member.id}` })
-                .setTimestamp()
-              await bankDrop(wallet, 15000)
-              await member.roles.remove(claimRole)
-              await interaction.editReply({ content: "Congratulations $Wood has been dropped!\nIt's now available in the [Kingdom Bank](https://kingdom.mindfolk.art/)\n [Video-Tutorial](https://youtu.be/DpEdortRaSw)\n\n**BE AWARE:** Only Phantom or Solflare Wallets are supported", components: [], ephemeral: true })
-              return interaction.guild.channels.cache.get(process.env.DROPLOG_CH).send({ embeds: [embedLog] })
-            })
-          }
-        }
-      }
-    })
+      })
+    }
+    voteSteps()
   }
+  return
   // BALANCE
   if (interaction.customId === 'balance') {
     await userInfo(interaction.user.id).then(async d => {
