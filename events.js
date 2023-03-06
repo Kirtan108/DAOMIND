@@ -25,7 +25,6 @@ const { Collection, EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, But
 //   return interaction.editReply({ content: "The Sol has been sent to your wallet."})
 // }
 
-const ELECTION_NUMBER = "numberOne"
 const VOTE_LIMIT = 2
 
 const { userInfo } = require("./utils/connect")
@@ -82,7 +81,6 @@ const eventHandler = async (interaction) => {
       if (!profileElection) {
         let profileElection = await electionModel.create({
           name: person,
-          election: ELECTION_NUMBER,
         })
         profileElection.save()
       }

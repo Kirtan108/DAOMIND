@@ -18,7 +18,6 @@ const daoSchema = new mongoose.Schema({
 
 const electionSchema = new mongoose.Schema({
     name: { type: String, require: true, unique: true},
-    election: { type: String, require: true },
     votes: { type: Number, default: 0 },
     voteKeys: [ String ],
     voteIds: [ String ],
