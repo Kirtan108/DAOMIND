@@ -28,7 +28,7 @@ const { Collection, EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, But
 const VOTE_LIMIT = 3
 
 const { userInfo } = require("./utils/connect")
-const { format, getNFTWallet } = require("./utils/functions")
+const { format, getNFTWallet, countAllNFTS } = require("./utils/functions")
 const { appEmbed, votedCandidate, voteLimit } = require("./utils/embeds")
 const { appLink } = require("./utils/buttons")
 
@@ -148,29 +148,32 @@ const eventHandler = async (interaction) => {
       const userWallets = r.user.wallet.map(i => i.public_key)
       const mainWallet = r.user.public_key
       await updateProfileSet({ publicKey: mainWallet })
-      let count = 0
-      let tokenKeys = []
-      async function awaitTasks(object) {
-        const promises = [];
-        Object.keys(object).forEach(async key => {
-          const promise = new Promise(async (resolve, reject) => {
-            const wallet = object[key]
-            const collectionNFT = await getNFTWallet(wallet)
-            if (collectionNFT.length === 0) return resolve()
-            await collectionNFT.forEach(function (x) {
-              const collection = x.collectionName
-              if (collection === undefined || collection !== 'mindfolk') return
-              const tokenID = x.mintAddress
-              tokenKeys.push(tokenID)
-              count++
-            })
-            resolve(count)
-          });
-          promises.push(promise)
-        });
-        await Promise.all(promises).catch(error => console.error(error))
-      }
-      await awaitTasks(userWallets)
+      // let count = 0
+      // let tokenKeys = []
+      // async function awaitTasks(object) {
+      //   const promises = [];
+      //   Object.keys(object).forEach(async key => {
+      //     const promise = new Promise(async (resolve, reject) => {
+      //       const wallet = object[key]
+      //       const collectionNFT = await getNFTWallet(wallet)
+      //       if (collectionNFT.length === 0) return resolve()
+      //       await collectionNFT.forEach(function (x) {
+      //         const collection = x.collectionName
+      //         if (collection === undefined || collection !== 'mindfolk') return
+      //         const tokenID = x.mintAddress
+      //         tokenKeys.push(tokenID)
+      //         count++
+      //       })
+      //       resolve(count)
+      //     });
+      //     promises.push(promise)
+      //   });
+      //   await Promise.all(promises).catch(error => console.error(error))
+      // }
+      // await awaitTasks(userWallets)
+      const result = await countAllNFTS(userWallets)
+      const count = result.count
+      const tokenKeys = result.tokenKeys
 
       const button = new ButtonBuilder()
       .setCustomId(`candidate_${candidate}`)

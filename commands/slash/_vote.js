@@ -1,7 +1,7 @@
 const { ContextMenuCommandBuilder, ApplicationCommandType, EmbedBuilder, ButtonBuilder, ActionRowBuilder, AttachmentBuilder } = require('discord.js')
 
 const { userInfo } = require("../../utils/connect")
-const { format, getNFTWallet } = require("../../utils/functions")
+const { format, getNFTWallet, getNFTS, shyftNFT, countAllNFTS } = require("../../utils/functions")
 const fs = require("fs")
 
 const downpage = "https://cdn.discordapp.com/attachments/1034106468800135168/1041668169426817044/downpage_1.png"
@@ -30,18 +30,22 @@ module.exports = {
          return interaction.editReply({ embeds:[errorEmbed], ephemeral: false })
         }
         const userWallets = r.user.wallet.map(i => i.public_key)
+        const wallet = await r.user.public_key
+
+        //return shyftNFT(wallet)
+        //return getNFTS(wallet)
         
-        let count = 0
+        //let count = 0
         async function awaitTasks(object) {
           const promises = [];
           Object.keys(object).forEach(async key => {
             const promise = new Promise(async (resolve, reject) => {
               const wallet = object[key]
-              const collectionNFT = await getNFTWallet(wallet)
+              const collectionNFT = await getNFTS(wallet)
               if(collectionNFT.length === 0) return resolve()
-              await collectionNFT.forEach(function (x) {
+              collectionNFT.forEach(function (x) {
                 const collection = x.collectionName
-                if (collection === undefined || collection !== 'mindfolk') return
+                if (collection === undefined || collection !== 'Mindfolk') return
                 count++
               })
               resolve(count)
@@ -51,12 +55,17 @@ module.exports = {
           await Promise.all(promises).catch(error => console.error(error))
         }
 
-        await awaitTasks(userWallets)
+        //await awaitTasks(userWallets)
+
+        const result = await countAllNFTS(userWallets)
+        // console.log(result.tokenKeys)
+        
+        console.log("COUNT: ", result.count)
         const votePowerEmbed = new EmbedBuilder()
         .setColor(0x0a0a0a)
         .setAuthor({ name: mention.username })
         .setTitle(`⸺ VOTE POWER`)
-        .setDescription(`> **${count}**`)
+        .setDescription(`> **${result.count}**`)
         .setThumbnail(`${mention.displayAvatarURL()}`)
 
         return interaction.followUp({ embeds: [votePowerEmbed] })
