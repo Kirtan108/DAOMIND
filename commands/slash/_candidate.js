@@ -1,23 +1,24 @@
-const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js')
+const { ContextMenuCommandBuilder, ApplicationCommandType, EmbedBuilder, ButtonBuilder, ActionRowBuilder, AttachmentBuilder, ButtonStyle } = require('discord.js')
 
 const { userInfo } = require("../../utils/connect")
-const { format } = require("../../utils/functions")
-const token = "<:dwood:1055600798756777984>"
+const { format, getNFTWallet, getNFTS, shyftNFT, countAllNFTS } = require("../../utils/functions")
+const fs = require("fs")
+
+const downpage = "https://cdn.discordapp.com/attachments/1034106468800135168/1041668169426817044/downpage_1.png"
 
 module.exports = {
-    data: new SlashCommandBuilder()
-    .setName('council_vote')
-    .setDescription('Create the vote panel for the candidate')
-    .addStringOption(option =>
-      option.setName('candidate')
-        .setDescription('The name of the candidate')
-              .setRequired(true)),
+  data: new ContextMenuCommandBuilder()
+	.setName('Candidate')
+	.setType(ApplicationCommandType.User),
     run: async ({ client, interaction }) => {
       //console.log(interaction.options/*._hoistedOptions*/)
+      // await interaction.deferReply()
+      const member = interaction.targetUser.id
+      const mention = interaction.targetUser
       const channel_id = await interaction.channel.id
       const channel = await interaction.guild.channels.cache.get(`${channel_id}`)
-      const candidate = interaction.options._hoistedOptions[0].value
-      //const mention = interaction.options.getUser('user')
+
+      const candidate = mention.username
 
       const votePanel = new EmbedBuilder()
       .setColor(0x0a0a0a)
@@ -42,5 +43,6 @@ module.exports = {
       
       await channel.send({ embeds: [votePanel], components: [voteRow], ephemeral: false })
       return interaction.editReply({ content: "Success!", ephemeral: true })
+
     },
 };

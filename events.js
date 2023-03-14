@@ -128,12 +128,77 @@ const eventHandler = async (interaction) => {
   const votePower = !profile ? null : profile.votePower
   const voteKeys = !profile ? null : profile.NFTKeys
   const votePublicKey = !profile ? null : profile.publicKey  
+  const snapshot = !profile ? false : profile.snapshot  
+
+  if (interaction.customId === 'vote_power'){
+    await interaction.deferReply({ ephemeral: true })
+    if (snapshot === true) return interaction.followUp({ content: "You have already verified your voting power!", ephemeral: true })
+
+    await userInfo(interaction.user.id).then(async r => {
+      if (r === undefined || r.error !== null) return interaction.followUp({ embeds: [appEmbed], components: [appLink], ephemeral: true })
+      
+      const userWallets = r.user.wallet.map(i => i.public_key)
+      const mainWallet = r.user.public_key
+      await updateProfileSet({ publicKey: mainWallet })
+      const result = await countAllNFTS(userWallets)
+      const count = result.count
+      const tokenKeys = result.tokenKeys
+
+      await updateProfileSet({ NFTKeys: tokenKeys })
+      await updateProfileSet({ votePower: count })
+
+      const button = new ButtonBuilder()
+      .setCustomId(`snapshot`)
+      .setLabel('Confirm Snapshot')
+      .setStyle(ButtonStyle.Primary)
+
+      const verifyPanel = new EmbedBuilder()
+      .setColor(0x0a0a0a)
+      .setTitle(`⸺ Vote Power Verification`)
+      .setDescription(`Make sure your Vote Power matches the number of Founders you hold.\n**Accepting this message will confirm the snapshot.**\n\n**BEWARE:**\nIf the voting doesn't match with the Founders you hold, make sure those wallets are also linked in Connect. If the issue persists might be due to the Solana chain so just dismiss this message and press the Claim Vote Power button again.`)
+        //.setThumbnail(`${mention.displayAvatarURL()}`)
+      .addFields({ name: '• Vote Power', value: `> **${count}**`, inline: true })
+
+      const verifyRow = new ActionRowBuilder().addComponents(button)
+      return interaction.followUp({ embeds: [verifyPanel], components: [verifyRow], ephemeral: true })
+    })
+  }
+
+  if (interaction.customId === 'dao_profile'){
+    await interaction.deferReply({ ephemeral: true })
+    if (snapshot !== true) return interaction.followUp({ content: "To be able to see your DAO profile you first need to Claim Vote Power!", ephemeral: true })
+
+    const profileEmb = new EmbedBuilder()
+        .setTitle("DAOmind Profile")
+        .addFields(
+          { name: `• Vote Power:`, value: `> ${votePower}`, inline: false },
+          { name: `• Remaining Council Votes:`, value: `> ${VOTE_LIMIT - voteLimit}`, inline: false },
+        )
+        .setColor(0x95D8E5)
+        .setImage(`${downpage}`)
+        .setThumbnail(`${member.displayAvatarURL({ size: 1024, format: 'png', dynamic: true })}`)
+        .setFooter({ text: `Discord User: ${interaction.user.username + '#' + interaction.user.discriminator}` })
+    return interaction.followUp({ embeds: [profileEmb], ephemeral: true })
+  }
+
+  if (interaction.customId === 'snapshot'){
+    await interaction.deferUpdate({ ephemeral: true })
+    await updateProfileSet({ snapshot: true })
+    const success = new EmbedBuilder()
+      .setColor(0x95D8E5)
+      .setTitle(`Snapshot Confirmed!`)
+      //.setDescription(`Make sure your Vote Power matches the number of Founders you hold.\n**Accepting this message will confirm the snapshot.**`)
+        //.setThumbnail(`${mention.displayAvatarURL()}`)
+      //.addFields({ name: '• Vote Power', value: `> **${count}**`, inline: true })
+    return interaction.editReply({ embeds: [success], components: [], ephemeral: true })
+  }
 
   if (interaction.customId === 'council_election'){
     await interaction.deferReply({ ephemeral: true })
+    if (snapshot !== true) return interaction.followUp({ content: "You need to verify the Vote Power in the DAOmind dashboard to be able to vote!", ephemeral: true })
     if (voteLimit === VOTE_LIMIT){
       votedCandidate.setTitle(`You have reached the limit of votes for this election!`)
-      return interaction.followUp({ content: "HEY!", embeds: [votedCandidate], ephemeral: true })
+      return interaction.followUp({ embeds: [votedCandidate], ephemeral: true })
     }
     const candidate = interaction.message.embeds[0].data.fields[0].value
     const searchVote = !profile ? -1 : profile.councilVotes.findIndex(r => r === candidate)
@@ -171,9 +236,10 @@ const eventHandler = async (interaction) => {
       //   await Promise.all(promises).catch(error => console.error(error))
       // }
       // await awaitTasks(userWallets)
-      const result = await countAllNFTS(userWallets)
-      const count = result.count
-      const tokenKeys = result.tokenKeys
+      // const result = await countAllNFTS(userWallets)
+      // const count = result.count
+      // const tokenKeys = result.tokenKeys
+      const count = votePower
 
       const button = new ButtonBuilder()
       .setCustomId(`candidate_${candidate}`)
@@ -188,11 +254,13 @@ const eventHandler = async (interaction) => {
       .addFields({ name: '• Vote Power', value: `> **${count}**`, inline: true })
 
       const verifyRow = new ActionRowBuilder().addComponents(button)
-      await updateProfileSet({ NFTKeys: tokenKeys })
-      await updateProfileSet({ votePower: count })
+      //await updateProfileSet({ NFTKeys: tokenKeys })
+      //await updateProfileSet({ votePower: count })
       return interaction.followUp({ embeds: [verifyPanel], components: [verifyRow], ephemeral: true })
     })
   }
+
+  //if(){}
 
   if (interaction.customId.startsWith('candidate')){
     await interaction.deferUpdate({ ephemeral: true })

@@ -8,6 +8,7 @@ const daoSchema = new mongoose.Schema({
     NFTKeys: [ String ],
     voteLimit: { type: Number, default: 0 },
     votePower: { type: Number, default: 0 },
+    snapshot: { type: Boolean, default: false }
     //receivedVotes: [ String ],
 })
 
