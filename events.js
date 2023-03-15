@@ -25,7 +25,7 @@ const { Collection, EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, But
 //   return interaction.editReply({ content: "The Sol has been sent to your wallet."})
 // }
 
-const VOTE_LIMIT = 3
+const VOTE_LIMIT = 7
 
 const { userInfo } = require("./utils/connect")
 const { format, getNFTWallet, countAllNFTS } = require("./utils/functions")
