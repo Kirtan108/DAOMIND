@@ -47,8 +47,10 @@ setInterval(() => {
 
 // EVENT HANDLER BELOW ///
 const eventHandler = async (interaction) => {
-  // await interaction.deferReply({ ephemeral: true })
+  await interaction.deferReply({ ephemeral: true })
   // await interaction.deferUpdate({ ephemeral: true })
+
+  return interaction.followUp({ content: "The voting period for Council election has officially come to an end. The results will be announced officially iin the following hours.", ephemeral: true })
 
   const member = interaction.guild.members.cache.get(interaction.user.id)
 
