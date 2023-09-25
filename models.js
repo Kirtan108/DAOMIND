@@ -25,6 +25,6 @@ const electionSchema = new mongoose.Schema({
     voteWallets: [ String ]
 })
 
-const daoModel = mongoose.model('daos', daoSchema)
-const electionModel = mongoose.model('firstelection', electionSchema)
+const daoModel = mongoose.model('daosSecond', daoSchema)
+const electionModel = mongoose.model('secondelection', electionSchema)
 module.exports = { daoModel, electionModel }
